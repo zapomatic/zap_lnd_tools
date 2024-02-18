@@ -3,6 +3,11 @@ LND node tools and configs for an Umbrel LND node.
 This repo assumes you are running an Umbrel node with LND. This is built to service the Umbrel [Zap-O-Matic](https://amboss.space/node/026d0169e8c220d8e789de1e7543f84b9041bbb3e819ab14b9824d37caa94f1eb2) testnet network nodes.
 
 If you are not on an Umbrel node, adjust directories within this project to fit your paths and docker network.
+Or you can simply use the configs without installing cron job scripts.
+
+## Configs
+
+- [changelnd-htlc.config](apps/charge-lnd/chargelnd-htlc.config): updates the max HTLC for each channel based on 1% bucket groups and disables channels that have less than 1% outbound liquidity. Max HTLC is set just below the bucket group (e.g. a channel with between 44%-45% outbound available will be set to a max of 43.9% to provide settlement buffer).
 
 This repo will grow as more tools are solidified outside of the testnet cluster. Some tools may be beta. Please review before using.
 
