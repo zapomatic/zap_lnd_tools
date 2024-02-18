@@ -7,7 +7,7 @@ Or you can simply use the configs without installing cron job scripts.
 
 ## Configs
 
-- [changelnd-htlc.config](apps/charge-lnd/chargelnd-htlc.config): updates the max HTLC for each channel based on 1% bucket groups and disables channels that have less than 1% outbound liquidity. Max HTLC is set just below the bucket group (e.g. a channel with between 44%-45% outbound available will be set to a max of 43.9% to provide settlement buffer).
+- [chargelnd-htlc.config](apps/charge-lnd/chargelnd-htlc.config): updates the max HTLC for each channel based on 1% bucket groups and disables channels that have less than 1% outbound liquidity. Max HTLC is set just below the bucket group (e.g. a channel with between 44%-45% outbound available will be set to a max of 43.9% to provide settlement buffer).
 
 This repo will grow as more tools are solidified outside of the testnet cluster. Some tools may be beta. Please review before using.
 
