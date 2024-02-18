@@ -7,7 +7,7 @@ If you are not on an Umbrel node, adjust directories within this project to fit 
 
 ## Install
 ```
-git clone git@github.com:zapomatic/zap_lnd_tools.git /home/umbrel/zap_lnd_tools
+git clone https://github.com/zapomatic/zap_lnd_tools.git /home/umbrel/zap_lnd_tools
 cd /home/umbrel/zap_lnd_tools
 # add cron jobs
 # write out current crontab
