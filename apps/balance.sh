@@ -46,6 +46,8 @@ GRPC=10.21.21.9:10009
 BOS_BIN=/home/$USER/.npm-global/bin/bos
 BOS_USER=$USER
 
+# NOTE: this variable is used to parse your node vs the partner node from bos
+# since the order of the node details is random
 MYNODE_NAME=Zap-O-Matic
 # docker images are custom built from source 
 # (because you shouldn't trust docker images that mount your .lnd directory)
