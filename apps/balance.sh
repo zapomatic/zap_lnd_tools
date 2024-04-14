@@ -333,15 +333,6 @@ while IFS= read -r line; do
     continue
   fi
 
-  # this was working for a while but appears to not always be reliable, I think transaction_vout is timer based and resets
-  # as some channels that have had history started showing up here and getting skipped...
-  # for now, edit the IGNORE list to avoid rebalancing into new channels that opened to us
-
-  # if [ -z "$transaction_vout" ] || [ "$transaction_vout" -eq "0" ]; then
-  #   echo "🚫 target: $targetid:$other_alias because it has never moved outward"
-  #   continue
-  # fi
-
   # don't even try to rebalance a channel if their fee is higher than ours
   if [ "$my_ppm" -lt "$other_ppm" ]; then
     echo "🚫 target: $targetid:$other_alias because it has a higher fee ($other_ppm PPM + $other_base) than we have ($my_ppm PPM + $my_base)"
