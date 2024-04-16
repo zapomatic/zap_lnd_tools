@@ -235,7 +235,7 @@ get_sinks() {
 }
 
 echo "🔬 analyzing highest $SOURCE_COUNT outbound channels to feed sinks... (note that using '| head -n $SOURCE_COUNT' here is known to throw 'write /dev/stdout: broken pipe'). Please PR a fix, as I am too lazy."
-potential_sources=$(docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | head -n $SOURCE_COUNT)"
+potential_sources=$(docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | head -n $SOURCE_COUNT)
 
 # NOTE, using echo | while creates a subshell that can't write to SOURCES
 # also we can't use <<< redirection in /bin/sh
@@ -295,7 +295,7 @@ if [ -n "$TARGET" ]; then
   exit 0;
 fi
 
-echo "🔬 analyzing highest $SINK_COUNT inbound channel sinks to fill with sources ($SOURCES)...  (note that using '| tail -n $SINK_COUNT' here is known to throw 'write /dev/stdout: broken pipe'). Please PR a fix, as I am too lazy.""  
+echo "🔬 analyzing highest $SINK_COUNT inbound channel sinks to fill with sources ($SOURCES)...  (note that using '| tail -n $SINK_COUNT' here is known to throw 'write /dev/stdout: broken pipe'). Please PR a fix, as I am too lazy."  
 potential_sinks=$(docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | tail -n $SINK_COUNT)
 
 while IFS= read -r line; do
