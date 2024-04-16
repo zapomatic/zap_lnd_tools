@@ -74,7 +74,7 @@ IGNORE="$NEWNODE1 $NEWNODE2"
 
 # DRY MODE (DO NOT RUN, ONLY LOG)
 # If you didn't read this far, jokes on you :)
-DRY_RUN=false
+DRY_RUN=true
 
 # number of rebalance-lnd -c channels to pluck off for potential sources/sinks
 # when testing, initially, set this low, then move it to about 50% of your channel count
