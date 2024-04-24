@@ -54,11 +54,11 @@ MYNODE_NAME=Zap-O-Matic
 # or use rebalancelnd/rebalance-lnd from docker hub if you want to be trusting, c-otto is probably ok :)
 REBALANCE_LND_DOCKER_IMAGE=zap/rebalance-lnd
 # what is my max PPM to consider this channel a good push source?
-MY_PPM_MAX=100
+MY_PPM_MAX=500
 # if rebalance succeeds, it will try 2x the amount (until fail)
-START_AMOUNT=12121
+START_AMOUNT=11111
 # cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.75
+FEE_FACTOR=0.65
 # only up to a max of 1000 PPM
 FEE_PPM_MAX=1000
 
@@ -78,8 +78,8 @@ DRY_RUN=true
 
 # number of rebalance-lnd -c channels to pluck off for potential sources/sinks
 # when testing, initially, set this low, then move it to about 50% of your channel count
-SOURCE_COUNT=50
-SINK_COUNT=50
+SOURCE_COUNT=30
+SINK_COUNT=30
 ##### END CONFIG #####
 
 # we will build up a list of sources below
@@ -112,7 +112,7 @@ try_rebalance()
   if [ ! -z "$6" ]; then
     feefactor="--fee-factor $6"
   fi
-  docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC --min-amount 100 $from $to $ppm $amt $percent $feefactor | while IFS= read -r line; do {
+  docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC --min-amount 100 --ignore-missed-fee $from $to $ppm $amt $percent $feefactor | while IFS= read -r line; do {
     # if echo "$line" | grep -q "Trying "; then
     #   echo "\t$line"
     # fi
