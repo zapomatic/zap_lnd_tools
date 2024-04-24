@@ -34,17 +34,22 @@ CFS uses a default fee of `1984` (queue synthwave pop soundtrack), adjusting fee
 
 Additionally, it is recommended that coop nodes use rebalancing to push sats out with an outbound liquidity target of 60% for all but the exception channels. Nodes cooperating to push out in this way will optimize the sub-network of coop nodes to heal liquidity imbalance at a reasonable cost. The charge-lnd config for CFS lists major nodes that are excluded from the coop fee settings but does not provide alternative rates since these may vary depending on the value that your node brings to the network. Channels that have no traffic for 30 days and that provide no outbound rebalancing value will be marked for closure. In this way, the co-operative network will foster value-add to the network without holding onto dead channels. However, if channels are well managed to add value, this will be an infrequent finding.
 
+The CFS charge-lnd script runs every `5 minutes` for two reasons:
+
+1. It contains a disable rule for channels with lower than 30K sats to prevent force-closures due to the < 0.18 LND reserve limit bug
+2. It adjust fees back upward as soon as they get traffic again. This limits abuse of the channels by vampires attempting to bleed it dry at a lower rate, but allows a small window where liquidity can be balanced to a desired state.
+
 The logic for cooperative fees is simple:
 
 ```mermaid
 flowchart LR
     A[cron chargelnd] --> B{local >= 75%}
     B -->|Yes| C{no outflow for 7 days?}
-    B -->|No| H[1984 PPM]
-    C -->|Yes| D[240 PPM]
+    B -->|No| H[1984 PPM + 55% max HTLC]
+    C -->|Yes| D[240 PPM + 25% max HTLC]
     C -->|No| E{no outflow for 3 days?}
-    E -->|Yes| F[490 PPM]
-    E -->|No| G[1984 PPM]
+    E -->|Yes| F[490 PPM + 25% max HTLC]
+    E -->|No| G[1984 PPM + 55% max HTLC]
 ```
 
 This logic is applied in the [chargelnd-coop.config](apps/charge-lnd/chargelnd-coop.config)
