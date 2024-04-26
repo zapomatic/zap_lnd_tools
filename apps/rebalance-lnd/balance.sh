@@ -58,12 +58,12 @@ MY_PPM_MAX=500
 # if rebalance succeeds, it will try 2x the amount (until fail)
 START_AMOUNT=11111
 # cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.65
+FEE_FACTOR=0.75
 # only up to a max of 1000 PPM
 FEE_PPM_MAX=1000
 
-OUTBOUND_THRESHOLD=75
-INBOUND_THRESHOLD=75
+OUTBOUND_THRESHOLD=65
+INBOUND_THRESHOLD=70
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
@@ -84,6 +84,18 @@ SINK_COUNT=30
 
 # we will build up a list of sources below
 SOURCES=""
+
+# get a single node liquidity info
+get_liquidity() {
+  docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | grep $1 | while IFS= read -r line; do {
+    echo "$line"
+  } done
+}
+get_sinks() {
+  docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | tail -n $SINK_COUNT | while IFS= read -r line; do {
+    echo "$line"
+  } done
+}
 
 try_rebalance()
 {
@@ -127,7 +139,22 @@ try_rebalance()
       echo $line
       if [ -n "$4" ]; then
         amount=$(($4 * 2))
-        echo "✅ Rebalance successful, retrying with $amount"
+        echo "✅ Rebalance successful, checking liquidity"
+        chaninfo=$(get_liquidity $2)
+        outbound=$(echo "$chaninfo" | awk -F '|' '{print $2}' | tr -cd '[:digit:]' | awk '{$1=$1};1')
+        inbound=$(echo "$chaninfo" | awk -F '|' '{print $3}' | tr -cd '[:digit:]' | awk '{$1=$1};1')
+        name=$(echo "$chaninfo" | awk -F '|' '{print $4}' | awk '{$1=$1};1')
+
+        capacity=$((inbound + outbound))
+
+        # too much inbound? potential target...
+        if [ "$inbound" -lt "$((INBOUND_THRESHOLD * capacity / 100))" ]; then
+          echo "🚫 not retrying target: $name because it now has less than $INBOUND_THRESHOLD% inbound"
+          continue
+        fi
+ 
+        amount=$(($4 * 2))
+        echo "✅ $name:$2 still has too much inbound. Retrying with $amount"
         try_rebalance "$1" "$2" "$3" "$amount" "$5" "$6"
       elif [ -n "$5" ]; then
         percent=$(($5 - 1))
@@ -227,12 +254,6 @@ get_channel_info ()
   echo "$my_ppm $my_is_disabled $my_base $other_alias $other_ppm $other_is_disabled $other_base $transaction_vout" 
 }
 
-
-get_sinks() {
-  docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | tail -n $SINK_COUNT | while IFS= read -r line; do {
-    echo "$line"
-  } done
-}
 
 echo "🔬 analyzing highest $SOURCE_COUNT outbound channels to feed sinks... (note that using '| head -n $SOURCE_COUNT' here is known to throw 'write /dev/stdout: broken pipe'). Please PR a fix, as I am too lazy."
 potential_sources=$(docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | head -n $SOURCE_COUNT)
