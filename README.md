@@ -25,14 +25,14 @@ One such predatory system, which exists in the wild today, is the large vampire 
 
 An additional benefit for the vampire is that they can connect out to other nodes on the network and use those channels to probe the cost of outward rebalancing, adding more liquidity and connections to cheapen the cost of reblancing high value targets--again, never expecting natural flow on these channels. Once the channel is bled dry to the other side, it is likely that the vampire node can rebalance the full channel contents back in at a relatively low cost.
 
-This system works well--until another vampire tries the exact same strategy and fee rates. Two vampires of the same size cannot cooperate with each other--however, they can prey on the same connections. Ultimately as more vampires appear, the vampire strategy becomes less effective as the network becomes more congested with predatory nodes. Vampires can be bigger or smaller, either preying on other vampires, or allowing themselves to be preyed, but this results in an upward fee race to infinity as vampires eat each other to climb higher. Ultimately, if every node on the network attempted this system, it would stop working--it only works because it preys on the weak nodes that are not using this predatory strategy.
+This system works well--until another vampire tries the exact same strategy and fee rates. Two vampires of the same size cannot cooperate with each other--however, they can prey on the same connections. Ultimately as more vampires appear, the vampire strategy becomes less effective as the network becomes more congested with predatory nodes. Vampires can be bigger or smaller, either preying on other vampires, or allowing themselves to be preyed on, but this results in an upward fee race to infinity as vampires eat each other to climb higher. Ultimately, if every node on the network attempted this system, it would stop working--it only works because it preys on the weak nodes that are not using this predatory strategy.
 
 This model is a great reference point because it contains some great ideas:
 
-1. Use static fees--that way your rates are reliable and the network can always rely on your consistent fees. But this has one flaw--to be cooperative, we want to allow sats to flow naturally or to be cheaply rebalanced inward by our channel partners. For this reason, we need to setup some static fee rules that change predictably and only within a small number of buckets (e.g. 1984, 490, 240).
+1. Use static fees--that way your rates are reliable and the network can always rely on your consistent fees. But this has one flaw--to be cooperative, we want to allow sats to flow naturally or to be cheaply rebalanced inward by our channel partners. For this reason, we need to setup some static fee rules that change predictably and only within a small number of buckets (e.g. 1984, 990, 492, 240).
 2. Use rebalancing to refill high value channels--a simple idea that nodes try and often fail at with lower fee rates. Using regular auto-fee tools like LNDg auto-fees, a node is likely to end up in a situation where many channels are bled dry one way while another set of channels are bled dry the other way and the channels that have liquidity can't find a path to refill the channels with no liquidity. Why? Well, one reason could be that the vampires are eating those routes at up to 2500 PPM--however, it may also be because the low fee settings of these channels is an artificial finding that is self-inflicted by not assuming higher fee demand and allowing the network to settle--because that can take a while. Additionally, some of your channels might literally not be providing any value to the network. If they are, ostensibly high fees are surprisingly acceptable. If they are not, you can close these channels.
 
-CFS uses a default fee of `1984` (queue synthwave pop soundtrack), adjusting fees down only when the liquidity is drained `75%+` to one side and remains inactive in the outbound direction for at least `3 days`. The side with the most liquidity reduces their fee to `490` after `3 days` of inactivity and then `240` after `7 days` if inactivity continues. These checkpoints allow the network to use these paths for a rebalance attempt or for lower fee traffic, while also allowing the cooperative fee network to rebalance at `4 hops` after 3 days, and `8 hops` after 7 days, while accounting for up to a 1 sat base-fee (optional).
+CFS uses a default fee of `1984` (queue synthwave pop soundtrack), adjusting fees down only when the liquidity is drained `75%+` to one side and remains inactive in the outbound direction for at least `3 days`. Once this timing threshold is hit, the side with the most liquidity reduces their fee to `990 PPM` and max HTLC to `25%` of the channel capacity, allowing lower fee traffic and rebalancing via the cooperative fee network within `2 hops` (including an optional 1 sat base-fee on each hop). After `5 days` of inactivity, the fee is further reduced to `492 PPM`, allowing `4 hops`. After `7 days`, `240 PPM` (`8 hops`). Fees can be lowered again at `14 days` to `108 PPM` (`16 hops`)--however, this is currently not done as we believe this is excessive. If a rebalance cannot be made in 8 hops, it is unlikely to be made at all. Additionally, if a node is not useful for outward rebalancing source material and is not making any real outbound traffic at `240 PPM` for `30 days`, it can be marked for closure.
 
 Additionally, it is recommended that coop nodes use rebalancing to push sats out with an outbound liquidity target of `< 70%` for all but the exception channels (merchants, exchanges, etc ignored by the fee rules) and an input target of `< 70%` and at a max cost of `70%` with a PPM limit of whatever you like (your higher value channels that are not part of the coop network might be `3500`, so you may want to rebalance up to `2500`). Nodes cooperating to push out in this way will optimize the sub-network of coop nodes to heal liquidity imbalance at a reasonable cost. The charge-lnd config for CFS lists major nodes that are excluded from the coop fee settings but does not provide alternative rates since these may vary depending on the value that your node brings to the network. Channels that have no traffic for 30 days and that provide no outbound rebalancing value will be marked for closure. In this way, the co-operative network will foster value-add to the network without holding onto dead channels. However, if channels are well managed to add value, this will be an infrequent finding.
 
@@ -48,12 +48,14 @@ The logic for cooperative fees is simple:
 ```mermaid
 flowchart LR
     A[cron chargelnd] --> B{local >= 75%}
-    B -->|Yes| C{no outflow for 7 days?}
-    B -->|No| H[1984 PPM + 55% max HTLC]
-    C -->|Yes| D[240 PPM + 25% max HTLC]
-    C -->|No| E{no outflow for 3 days?}
-    E -->|Yes| F[490 PPM + 25% max HTLC]
-    E -->|No| G[1984 PPM + 55% max HTLC]
+    B -->|Yes| C{no outflow\n for 7 days?}
+    B -->|No| D[1984 PPM + 55% max HTLC]
+    C -->|Yes| E[240 PPM + 25% max HTLC]
+    C -->|No| F{no outflow\n for 5 days?}
+    F -->|Yes| G[492 PPM + 25% max HTLC]
+    F -->|No| H{no outflow\n for 3 days?}
+    H -->|Yes| I[990 PPM + 55% max HTLC]
+    H -->|No| D[1984 PPM + 55% max HTLC]
 ```
 
 This logic is applied in the [chargelnd-coop.config](apps/charge-lnd/chargelnd-coop.config)
@@ -78,17 +80,17 @@ B -1984-> [▯▯...▮▮] <-1984- C
 C -1984-> [▯▯...▮▮] <-1984- A
 ```
 
-Traffic flows, and after three days of no outflow for the side with the most liquidity, the fee is reduced to 490:
+Traffic flows, and after three days of no outflow for the side with the most liquidity, the fee is reduced to 492:
 
 ```
-A -1984-> [▯...▮▮▮] <- 490- B
-B -1984-> [▯...▮▮▮] <- 490- C
-C -1984-> [▯...▮▮▮] <- 490- A
+A -1984-> [▯...▮▮▮] <- 492- B
+B -1984-> [▯...▮▮▮] <- 492- C
+C -1984-> [▯...▮▮▮] <- 492- A
 ```
 
-These nodes can now rebalance at a low cost of 490 PPM:
+These nodes can now rebalance at a low cost of 492 PPM:
 
-`A -> C (free) -> B (490) -> A (490) = 980 PPM` cost to A (plus any base-fee requirements), returning the triangle to perfect harmony.
+`A -> C (free) -> B (492) -> A (492) = 980 PPM` cost to A (plus any base-fee requirements), returning the triangle to perfect harmony.
 
 OR, after 7 days of no outflow, the fee is reduced to 240:
 `A -> C (free) -> B (240) -> A (240) = 480 PPM`
