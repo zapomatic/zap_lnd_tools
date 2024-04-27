@@ -63,7 +63,7 @@ FEE_FACTOR=0.70
 FEE_PPM_MAX=1000
 
 OUTBOUND_THRESHOLD=55
-INBOUND_THRESHOLD=75
+INBOUND_THRESHOLD=70
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
