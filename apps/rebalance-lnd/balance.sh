@@ -58,12 +58,12 @@ MY_PPM_MAX=500
 # if rebalance succeeds, it will try 2x the amount (until fail)
 START_AMOUNT=11111
 # cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.75
+FEE_FACTOR=0.70
 # only up to a max of 1000 PPM
 FEE_PPM_MAX=1000
 
-OUTBOUND_THRESHOLD=65
-INBOUND_THRESHOLD=70
+OUTBOUND_THRESHOLD=55
+INBOUND_THRESHOLD=75
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
