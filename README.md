@@ -36,7 +36,7 @@ CFS uses a default fee of `1984` (queue synthwave pop soundtrack), adjusting fee
 
 Additionally, it is recommended that coop nodes use rebalancing to push sats out with an outbound liquidity target of `< 55%` for all but the exception channels (merchants, exchanges, etc ignored by the fee rules) and an input target of `< 70%` (where rates will be lower by cooperative channel partners) and at a max cost of `70%` with a PPM limit of whatever you like (your higher value channels that are not part of the coop network might be `3500`, so you may want to rebalance up to `2500`). This creates a nice `25%` range of "balance" within the channel that will not be pushed or pulled. Nodes cooperating to push out in this way will optimize the sub-network of coop nodes to heal liquidity imbalance at a reasonable cost. The charge-lnd config for CFS lists major nodes that are excluded from the coop fee settings but does not provide alternative rates since these may vary depending on the value that your node brings to the network. Channels that have no traffic for 30 days and that provide no outbound rebalancing value will be marked for closure. In this way, the co-operative network will foster value-add to the network without holding onto dead channels. However, if channels are well managed to add value, this will be an infrequent finding.
 
-The CFS charge-lnd script runs every `2 minutes` for two reasons:
+The CFS charge-lnd script runs every `5 minutes` for two reasons:
 
 1. It contains a disable rule for channels with lower than 30K sats to prevent force-closures due to the < 0.18 LND reserve limit bug
 2. It adjust fees back upward as soon as they get traffic again. This limits abuse of the channels by vampires attempting to bleed it dry at a lower rate, but allows a small window where liquidity can be balanced to a desired state.
@@ -163,11 +163,11 @@ sudo crontab -l > sudo.cron
 
 # add new crons into cron file
 
-# run charge-lnd every 2 minutes to ensure we disable channels with too low volume and that we reset fees after movement(nothing changes if the % range of a channel hasn't changed)
+# run charge-lnd every 5 minutes to ensure we disable channels with too low volume and that we reset fees after movement(nothing changes if the % range of a channel hasn't changed)
 
 # /home/umbrel/zap_lnd_tools/logs/htlc.log will store the last execution output
 
-echo "*/2 * * * * /home/umbrel/zap_lnd_tools/cronjobs/chargelnd-coop.sh > /home/umbrel/zap_lnd_tools/logs/htlc.log 2>&1" >> sudo.cron
+echo "*/5 * * * * /home/umbrel/zap_lnd_tools/cronjobs/chargelnd-coop.sh > /home/umbrel/zap_lnd_tools/logs/htlc.log 2>&1" >> sudo.cron
 
 # install new cron file
 
