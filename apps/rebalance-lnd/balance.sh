@@ -54,16 +54,16 @@ MYNODE_NAME=Zap-O-Matic
 # or use rebalancelnd/rebalance-lnd from docker hub if you want to be trusting, c-otto is probably ok :)
 REBALANCE_LND_DOCKER_IMAGE=zap/rebalance-lnd
 # what is my max PPM to consider this channel a good push source?
-MY_PPM_MAX=500
+MY_PPM_MAX=1984
 # if rebalance succeeds, it will try 2x the amount (until fail)
 START_AMOUNT=11111
 # cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.70
+FEE_FACTOR=0.5
 # only up to a max of 1000 PPM
 FEE_PPM_MAX=1000
 
-OUTBOUND_THRESHOLD=55
-INBOUND_THRESHOLD=70
+OUTBOUND_THRESHOLD=65
+INBOUND_THRESHOLD=60
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
@@ -95,6 +95,51 @@ get_sinks() {
   docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | tail -n $SINK_COUNT | while IFS= read -r line; do {
     echo "$line"
   } done
+}
+
+get_channel_info ()
+{
+  local output=$(sudo -u $BOS_USER bash -c "$BOS_BIN find '$1' --no-color")
+            
+# This will return a response like:
+# channels:
+#   -
+#     capacity:         25000000
+#     id:               828159x1890x7
+#     policies:
+#       -
+#         alias:            Zap-O-Matic
+#         base_fee_mtokens: 0
+#         cltv_delta:       80
+#         fee_rate:         315
+#         is_disabled:      false
+#         max_htlc_mtokens: 5420250000
+#         min_htlc_mtokens: 1000
+#         public_key:       026d0169e8c220d8e789de1e7543f84b9041bbb3e819ab14b9824d37caa94f1eb2
+#       -
+#         alias:            strike
+#         base_fee_mtokens: 0
+#         cltv_delta:       80
+#         fee_rate:         750
+#         is_disabled:      false
+#         max_htlc_mtokens: 24750000000
+#         min_htlc_mtokens: 10000
+#         public_key:       034d7f4bbbd6c1c1d8fbe0a42dd1f59e10b66540c6872dfcaa095d8d5cffebcf46
+#     transaction_id:   c4052f6f99eaeca5d6a48dc3e9ccf69cfc1813b8d42800983a81f1487c74d66b
+#     transaction_vout: 7
+#     updated_at:       2024-03-02T15:08:30.000Z
+
+  local my_ppm=$(echo "$output" | grep -A 7 $MYNODE_NAME | grep 'fee_rate' | awk '{print $2}')
+  local my_is_disabled=$(echo "$output" | grep -A 7 $MYNODE_NAME | grep 'is_disabled' | awk '{print $2}')
+  local my_base=$(echo "$output" | grep -A 7 $MYNODE_NAME | grep 'base_fee_mtokens' | awk '{print $2}')
+
+  local other_alias=$(echo "$output" | grep -m 2 'alias' | grep -v $MYNODE_NAME | awk '{print $2}')
+  local other=$(echo "$output" | grep -A 5 $other_alias)
+  local other_ppm=$(echo "$other" | grep 'fee_rate' | awk '{print $2}')
+  local other_is_disabled=$(echo "$other" |grep 'is_disabled' | awk '{print $2}')
+  local other_base=$(echo "$other" | grep 'base_fee_mtokens' | awk '{print $2}')
+  local transaction_vout=$(echo "$other" | grep 'transaction_vout' | awk '{print $2}')
+  echo "$my_ppm $my_is_disabled $my_base $other_alias $other_ppm $other_is_disabled $other_base $transaction_vout" 
 }
 
 try_rebalance()
@@ -169,7 +214,6 @@ try_rebalance()
 try_rebalance_series() (
   targetid="$1"
   name="$2"
-  # for each source in SOURCES, try to rebalance to the target
   echo "⚡️ Attempting to send $START_AMOUNT sats at max $FEE_PPM_MAX PPM up to $FEE_FACTOR of cost into $name ($targetid) from each source"
   for sourceId in $SOURCES; do
     if [ "$DRY_RUN" = "true" ]; then
@@ -178,81 +222,8 @@ try_rebalance_series() (
     fi
     try_rebalance $sourceId $targetid $FEE_PPM_MAX $START_AMOUNT "" $FEE_FACTOR
   done
-
-  # other experimental attempts:
-
-  # echo "⚡️ Attempting to send 99% of estimate at max 1000 PPM up to 85% of cost into $name from each source"
-  # for sourceId in $SOURCES; do
-  #     # try_rebalance $sourceId $targetid 500 "" 10 "" 0.8
-  #     # try_rebalance $sourceId $targetid 500 "" 50 "" 0.8
-  #     # try_rebalance $sourceId $targetid 500 1000 "" 0.8
-  #     # try_rebalance $sourceId $targetid 1000 10000 "" 0.9
-  #     try_rebalance $sourceId $targetid 1000 "" 99 0.85
-  # done
-  
-  # echo "⚡️ Attempting to send 4% of estimate at max 1000 PPM up to 85% of cost into $name from each source"
-  # for sourceId in $SOURCES; do
-  #     try_rebalance $sourceId $targetid 1000 "" 4 0.85
-  # done
-  # echo "⚡️ Attempting to send 9% of estimate at max 1000 PPM up to 85% of cost into $name ($targetid) from each source"
-  # for sourceId in $SOURCES; do
-  #     try_rebalance $sourceId $targetid 1000 "" 9 0.85
-  # done
-  # echo "⚡️ Attempting to send 19% of estimate at max 1000 PPM up to 85% of cost into $name from each source"
-  # for sourceId in $SOURCES; do
-  #     try_rebalance $sourceId $targetid 1000 "" 19 0.85
-  # done
-  # echo "⚡️ Attempting to send 49% of estimate at max 1000 PPM up to 85% of cost into $name ($targetid) from each source"
-  # for sourceId in $SOURCES; do
-  #     try_rebalance $sourceId $targetid 1000 "" 49 0.85
-  # done
-
 )
 
-get_channel_info ()
-{
-  local output=$(sudo -u $BOS_USER bash -c "$BOS_BIN find '$1' --no-color")
-            
-# This will return a response like:
-# channels:
-#   -
-#     capacity:         25000000
-#     id:               828159x1890x7
-#     policies:
-#       -
-#         alias:            Zap-O-Matic
-#         base_fee_mtokens: 0
-#         cltv_delta:       80
-#         fee_rate:         315
-#         is_disabled:      false
-#         max_htlc_mtokens: 5420250000
-#         min_htlc_mtokens: 1000
-#         public_key:       026d0169e8c220d8e789de1e7543f84b9041bbb3e819ab14b9824d37caa94f1eb2
-#       -
-#         alias:            strike
-#         base_fee_mtokens: 0
-#         cltv_delta:       80
-#         fee_rate:         750
-#         is_disabled:      false
-#         max_htlc_mtokens: 24750000000
-#         min_htlc_mtokens: 10000
-#         public_key:       034d7f4bbbd6c1c1d8fbe0a42dd1f59e10b66540c6872dfcaa095d8d5cffebcf46
-#     transaction_id:   c4052f6f99eaeca5d6a48dc3e9ccf69cfc1813b8d42800983a81f1487c74d66b
-#     transaction_vout: 7
-#     updated_at:       2024-03-02T15:08:30.000Z
-
-  local my_ppm=$(echo "$output" | grep -A 7 $MYNODE_NAME | grep 'fee_rate' | awk '{print $2}')
-  local my_is_disabled=$(echo "$output" | grep -A 7 $MYNODE_NAME | grep 'is_disabled' | awk '{print $2}')
-  local my_base=$(echo "$output" | grep -A 7 $MYNODE_NAME | grep 'base_fee_mtokens' | awk '{print $2}')
-
-  local other_alias=$(echo "$output" | grep -m 2 'alias' | grep -v $MYNODE_NAME | awk '{print $2}')
-  local other=$(echo "$output" | grep -A 5 $other_alias)
-  local other_ppm=$(echo "$other" | grep 'fee_rate' | awk '{print $2}')
-  local other_is_disabled=$(echo "$other" |grep 'is_disabled' | awk '{print $2}')
-  local other_base=$(echo "$other" | grep 'base_fee_mtokens' | awk '{print $2}')
-  local transaction_vout=$(echo "$other" | grep 'transaction_vout' | awk '{print $2}')
-  echo "$my_ppm $my_is_disabled $my_base $other_alias $other_ppm $other_is_disabled $other_base $transaction_vout" 
-}
 
 
 echo "🔬 analyzing highest $SOURCE_COUNT outbound channels to feed sinks... (note that using '| head -n $SOURCE_COUNT' here is known to throw 'write /dev/stdout: broken pipe'). Please PR a fix, as I am too lazy."
@@ -357,6 +328,11 @@ while IFS= read -r line; do
   # don't even try to rebalance a channel if their fee is higher than ours
   if [ "$my_ppm" -lt "$other_ppm" ]; then
     echo "🚫 target: $targetid:$other_alias because it has a higher fee ($other_ppm PPM + $other_base) than we have ($my_ppm PPM + $my_base)"
+    continue
+  fi
+
+  if [ "$my_ppm" -lt "$((1/FEE_FACTOR * other_ppm))" ]; then
+    echo "🚫 target: $targetid:$other_alias because their fee ($other_ppm PPM + $other_base) is higher than our FEE_FACTOR allows ($FEE_FACTOR of $my_ppm PPM + $my_base)"
     continue
   fi
 
