@@ -15,6 +15,8 @@ This repo will grow as more tools are solidified outside of the testnet cluster.
 
 ## Cooperative Fee Strategy
 
+> NOTE: after testing, this has proven to be problematic with current software options. Charge-lnd identifies chan.min_ratio with changing values including live/pending HTLCs. This means that when a channel is on the edge of a fee threshold and an active HTLC moves it over the line, the fee will adjust, making the active HTLC invalid due to insufficient fee. This can lock a channel in a dead state where traffic is never allowed at the market desired rate.
+
 The Cooperative Fee Strategy (CFS) is a theoretical (in-experiment) game-theory optimal strategy for a sub-network of lightning routing nodes to share a fee setting that works harmoniously for all parties using the system. It uses a combination of strategies for rebalancing and fee setting that mimics vampires/spiders, without resorting to fully becoming a predator on the network and without falling victim to nodes that prey on weak fee settings. It aims to achieve channel balance through heavy outward rebalancing and a small but wide range of fee adjustments. Despite this, the rules are very simple--much like the [Tit-for-Tat game theory](https://en.wikipedia.org/wiki/Tit_for_tat) strategy, it relies on simplicity to achieve a complex result that functions in both cooperative and predatory strategy environments.
 
 This strategy accounts for vampires, spiders, exchanges, merchants, and special agreements between nodes (e.g. G-Spot 0/0 revenue sharing), and allows manual exclusions for special cases (e.g. Boltz at 0/0 for allowing free swap routing while enjoying assisted revenue on the rebound).
