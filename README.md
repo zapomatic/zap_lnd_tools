@@ -11,7 +11,11 @@ Or you can simply use the configs without installing cron job scripts.
 - [chargelnd-coop.config](apps/charge-lnd/chargelnd-coop.config): This is the Cooperative Fee Strategy script that will be scheduled to run daily.
 - [chargelnd-htlc.config](apps/charge-lnd/chargelnd-htlc.config): DEPRECATED (this micro-bucketing has turned out to be too granular, leading to unnecessary htlc failures on high traffic routing nodes. You might be able to get away with it by setting the cron to every 1-5 minutes instead of hours. Advanced users only) - updates the max HTLC for each channel based on 1% bucket groups and disables channels that have less than 3% outbound liquidity. Max HTLC is set just below the bucket group (e.g. a channel with between 44%-45% outbound available will be set to a max of 43.9% to provide settlement buffer).
 
-This repo will grow as more tools are solidified outside of the testnet cluster. Some tools may be beta. Please review before using.
+# Cron Jobs
+
+- [ts-health.sh](cronjobs/ts-health.sh): This script will check the health of the wireguard connection and restart it if it is down. If you periodically lose TunnelSats connectivity and find that the output of `sudo wg | grep latest` shows more than 2 minutes, then something is failing with wireguard. This script run as root cronjob will restart wg if needed: `*/5 * * * * /home/umbrel/zap_lnd_tools/cronjobs/ts-health.sh > /home/umbrel/zap_lnd_tools/logs/ts.log 2>&1`
+
+> This repo will grow as more tools are solidified outside of the testnet cluster. Some tools may be beta. Please review before using.
 
 ## Cooperative Fee Strategy
 
