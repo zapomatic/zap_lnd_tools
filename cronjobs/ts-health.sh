@@ -10,7 +10,7 @@
 #   latest handshake: 3 hours ago
 
 # Cronjob for root (every 5 minutes)
-# */5 * * * * /home/umbrel/zap_lnd_tools/cronjobs/ts-health.sh >> /home/umbrel/zap_lnd_tools/logs/wg.log 2>&1
+# */5 * * * * /home/umbrel/zap_lnd_tools/cronjobs/ts-health.sh >> /home/umbrel/zap_lnd_tools/logs/ts.log 2>&1
 status=$(wg | grep latest)
 if echo "$status" | grep -Eq "([2-9]|[1-9][0-9]+) minutes?[, ]" || echo "$status" | grep -q "hour"; then
     current_time=$(date '+%Y-%m-%d %H:%M:%S')
