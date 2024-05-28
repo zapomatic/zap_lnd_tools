@@ -54,27 +54,28 @@ MYNODE_NAME=Zap-O-Matic
 # or use rebalancelnd/rebalance-lnd from docker hub if you want to be trusting, c-otto is probably ok :)
 REBALANCE_LND_DOCKER_IMAGE=zap/rebalance-lnd
 # what is my max PPM to consider this channel a good push source?
-MY_PPM_MAX=1984
+MY_PPM_MAX=1000
 # if rebalance succeeds, it will try 2x the amount (until fail)
 START_AMOUNT=11111
 # cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.5
-# only up to a max of 1000 PPM
-FEE_PPM_MAX=1000
+FEE_FACTOR=0.75
+# only up to a max of 2000 PPM
+FEE_PPM_MAX=2500
 
-OUTBOUND_THRESHOLD=65
-INBOUND_THRESHOLD=60
+OUTBOUND_THRESHOLD=75
+INBOUND_THRESHOLD=65
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
 # clearly these are just examples:
 NEWNODE1=111111111111111111
 NEWNODE2=222222222222222222
-IGNORE="$NEWNODE1 $NEWNODE2"
+GSPOT=906394505130934275
+IGNORE="$NEWNODE1 $NEWNODE2 $GSPOT"
 
 # DRY MODE (DO NOT RUN, ONLY LOG)
 # If you didn't read this far, jokes on you :)
-DRY_RUN=true
+DRY_RUN=false
 
 # number of rebalance-lnd -c channels to pluck off for potential sources/sinks
 # when testing, initially, set this low, then move it to about 50% of your channel count
@@ -84,6 +85,9 @@ SINK_COUNT=30
 
 # we will build up a list of sources below
 SOURCES=""
+
+# cache for completed rebalances
+COMPLETED=""
 
 # get a single node liquidity info
 get_liquidity() {
@@ -195,6 +199,7 @@ try_rebalance()
         # too much inbound? potential target...
         if [ "$inbound" -lt "$((INBOUND_THRESHOLD * capacity / 100))" ]; then
           echo "🚫 not retrying target: $name because it now has less than $INBOUND_THRESHOLD% inbound"
+          COMPLETED="$COMPLETED $2"
           continue
         fi
  
@@ -220,6 +225,27 @@ try_rebalance_series() (
       echo "🔍 dry run: $sourceId -> $targetid"
       continue
     fi
+    if [ -n "$COMPLETED" ]; then
+      if echo "$COMPLETED" | grep -q "$targetid"; then
+        echo "🕐 ignore rebalancing to $targetid because it is on COMPLETED list"
+        continue
+      fi
+    fi
+    # make sure the source still has too much outbound
+    chaninfo=$(get_liquidity $sourceId)
+    outbound=$(echo "$chaninfo" | awk -F '|' '{print $2}' | tr -cd '[:digit:]' | awk '{$1=$1};1')
+    inbound=$(echo "$chaninfo" | awk -F '|' '{print $3}' | tr -cd '[:digit:]' | awk '{$1=$1};1')
+    name=$(echo "$chaninfo" | awk -F '|' '{print $4}' | awk '{$1=$1};1')
+
+    capacity=$((inbound + outbound))
+
+    # not enough outbound anymore?
+    if [ "$outbound" -lt "$((OUTBOUND_THRESHOLD * capacity / 100))" ]; then
+      echo "🚫 not using $sourceId ($name) as a source any longer because it now has less than $OUTBOUND_THRESHOLD% outbound"
+      SOURCES=$(echo "$SOURCES" | sed "s/$sourceId//")
+      continue
+    fi
+
     try_rebalance $sourceId $targetid $FEE_PPM_MAX $START_AMOUNT "" $FEE_FACTOR
   done
 )
@@ -328,11 +354,6 @@ while IFS= read -r line; do
   # don't even try to rebalance a channel if their fee is higher than ours
   if [ "$my_ppm" -lt "$other_ppm" ]; then
     echo "🚫 target: $targetid:$other_alias because it has a higher fee ($other_ppm PPM + $other_base) than we have ($my_ppm PPM + $my_base)"
-    continue
-  fi
-
-  if [ "$my_ppm" -lt "$((1/FEE_FACTOR * other_ppm))" ]; then
-    echo "🚫 target: $targetid:$other_alias because their fee ($other_ppm PPM + $other_base) is higher than our FEE_FACTOR allows ($FEE_FACTOR of $my_ppm PPM + $my_base)"
     continue
   fi
 
