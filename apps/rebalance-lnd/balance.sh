@@ -63,7 +63,7 @@ FEE_FACTOR=0.75
 FEE_PPM_MAX=2500
 
 OUTBOUND_THRESHOLD=75
-INBOUND_THRESHOLD=65
+INBOUND_THRESHOLD=70
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
@@ -197,7 +197,7 @@ try_rebalance()
         capacity=$((inbound + outbound))
 
         # too much inbound? potential target...
-        if [ "$inbound" -lt "$((INBOUND_THRESHOLD * capacity / 100))" ]; then
+        if [ "$((inbound * 100))" -lt "$((INBOUND_THRESHOLD * capacity))" ]; then
           echo "🚫 not retrying target: $name because it now has less than $INBOUND_THRESHOLD% inbound"
           COMPLETED="$COMPLETED $2"
           continue
@@ -240,7 +240,7 @@ try_rebalance_series() (
     capacity=$((inbound + outbound))
 
     # not enough outbound anymore?
-    if [ "$outbound" -lt "$((OUTBOUND_THRESHOLD * capacity / 100))" ]; then
+  if [ "$((outbound * 100))" -lt "$((OUTBOUND_THRESHOLD * capacity))" ]; then
       echo "🚫 not using $sourceId ($name) as a source any longer because it now has less than $OUTBOUND_THRESHOLD% outbound"
       SOURCES=$(echo "$SOURCES" | sed "s/$sourceId//")
       continue
@@ -271,7 +271,7 @@ while IFS= read -r line; do
   outbound_percent=$((100 * outbound / capacity))
 
   # any channel with $OUTBOUND_THRESHOLD%+ outbound is a potential source
-  if [ "$outbound" -lt "$((OUTBOUND_THRESHOLD * capacity / 100))" ]; then
+  if [ "$((outbound * 100))" -lt "$((OUTBOUND_THRESHOLD * capacity))" ]; then
     echo "🚫 source: $chanid:$name as source because it has less than $OUTBOUND_THRESHOLD% outbound"
     continue;
   fi
@@ -325,7 +325,7 @@ while IFS= read -r line; do
   capacity=$((inbound + outbound))
 
   # too much inbound? potential target...
-  if [ "$inbound" -lt "$((INBOUND_THRESHOLD * capacity / 100))" ]; then
+  if [ "$((inbound * 100))" -lt "$((INBOUND_THRESHOLD * capacity))" ]; then
     echo "🚫 target: $name because it has less than $INBOUND_THRESHOLD% inbound"
     continue
   fi
