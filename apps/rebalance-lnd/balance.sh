@@ -58,11 +58,11 @@ MY_PPM_MAX=1000
 # if rebalance succeeds, it will try 2x the amount (until fail)
 START_AMOUNT=11111
 # cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.75
+FEE_FACTOR=0.65
 # only up to a max of 2000 PPM
 FEE_PPM_MAX=2500
 
-OUTBOUND_THRESHOLD=75
+OUTBOUND_THRESHOLD=70
 INBOUND_THRESHOLD=70
 
 # new nodes that have high fees and might have high inbound but
@@ -71,7 +71,8 @@ INBOUND_THRESHOLD=70
 NEWNODE1=111111111111111111
 NEWNODE2=222222222222222222
 GSPOT=906394505130934275
-IGNORE="$NEWNODE1 $NEWNODE2 $GSPOT"
+CLOSE="912851936929447938"
+IGNORE="$NEWNODE1 $NEWNODE2 $GSPOT $CLOSE"
 
 # DRY MODE (DO NOT RUN, ONLY LOG)
 # If you didn't read this far, jokes on you :)
