@@ -1,9 +1,11 @@
 #!/bin/sh
 
 # Rebalance channels with an emphasis on pushing sats OUT of channels that are low to zero fee
-# to all channels that need more outbound liquidity
-# unlike lndg rebalance, this script uses rebalance-lnd and balanceofsatoshis to find the best channels
+# to ALL channels that need more outbound liquidity.
+# Unlike lndg rebalance, this script uses rebalance-lnd and balanceofsatoshis to find the best channels
 # and it runs through every single pairing to ensure that every option is tried.
+# It starts out with 625 sats and doubles the amount until it fails, then moves to the next source.
+#
 # Note that there is no preferential order to which source is used first for a given sink.
 # this script was written for the love of testing and is not something you may want to actually run
 # unless you really know what you are doing
@@ -14,8 +16,8 @@
 
 # EDIT CONFIGS BELOW BEFORE RUNNING
 
-# SINKS: channels with high inbound liquidity (75%+)
-# SOURCES: channels with high outbound (75%+) + low fee (e.g. under 100 PPM)
+# SINKS: channels with high inbound liquidity (e.g. 75%+)
+# SOURCES: channels with high outbound (e.g. 75%+) + low fee (e.g. under 100 PPM)
 
 # attempt to rebalance from every single SOURCE to every single SINK
 # doubling the amount on success until it fails
@@ -54,34 +56,34 @@ MYNODE_NAME=Zap-O-Matic
 # or use rebalancelnd/rebalance-lnd from docker hub if you want to be trusting, c-otto is probably ok :)
 REBALANCE_LND_DOCKER_IMAGE=zap/rebalance-lnd
 # what is my max PPM to consider this channel a good push source?
-MY_PPM_MAX=1000
+MY_PPM_MAX=100
 # if rebalance succeeds, it will try 2x the amount (until fail)
-START_AMOUNT=11111
-# cost will be up to 75% of the fee rate for the target sink
-FEE_FACTOR=0.65
+START_AMOUNT=625
+# cost will be up to 60% of the fee rate for the target sink
+FEE_FACTOR=0.5
 # only up to a max of 2000 PPM
-FEE_PPM_MAX=2500
+FEE_PPM_MAX=2000
 
-OUTBOUND_THRESHOLD=70
-INBOUND_THRESHOLD=70
+OUTBOUND_THRESHOLD=75
+INBOUND_THRESHOLD=75
 
 # new nodes that have high fees and might have high inbound but
 # haven't really found a good starting fee rate yet
 # clearly these are just examples:
 NEWNODE1=111111111111111111
 NEWNODE2=222222222222222222
-GSPOT=906394505130934275
-CLOSE="912851936929447938"
-IGNORE="$NEWNODE1 $NEWNODE2 $GSPOT $CLOSE"
+# and/or:
+TOONEW="LIST_OF_NEW_NODES SPLIT_BY_SPACES"
+IGNORE="$NEWNODE1 $NEWNODE2 $TOONEW"
 
 # DRY MODE (DO NOT RUN, ONLY LOG)
 # If you didn't read this far, jokes on you :)
-DRY_RUN=false
+DRY_RUN=true
 
 # number of rebalance-lnd -c channels to pluck off for potential sources/sinks
 # when testing, initially, set this low, then move it to about 50% of your channel count
 SOURCE_COUNT=30
-SINK_COUNT=30
+SINK_COUNT=50
 ##### END CONFIG #####
 
 # we will build up a list of sources below
@@ -252,7 +254,8 @@ try_rebalance_series() (
 )
 
 
-
+start_balance()
+{
 echo "🔬 analyzing highest $SOURCE_COUNT outbound channels to feed sinks... (note that using '| head -n $SOURCE_COUNT' here is known to throw 'write /dev/stdout: broken pipe'). Please PR a fix, as I am too lazy."
 potential_sources=$(docker run --rm --network=$NETWORK -v $LNDPATH:/root/.lnd $REBALANCE_LND_DOCKER_IMAGE --grpc $GRPC -c | head -n $SOURCE_COUNT)
 
@@ -330,6 +333,10 @@ while IFS= read -r line; do
     echo "🚫 target: $name because it has less than $INBOUND_THRESHOLD% inbound"
     continue
   fi
+  if [ "$outbound" -eq 0 ]; then
+    echo "🚫 target: $name because it has 0 outbound (new channel opened by remote?)"
+    continue
+  fi
 
   if echo "$IGNORE" | grep -q "$targetid"; then
     echo "🕐 ignore rebalancing to $targetid because it is on IGNORE list"
@@ -362,3 +369,9 @@ while IFS= read -r line; do
 done <<EOF
 $potential_sinks
 EOF
+
+echo "completed run: $(date)"
+start_balance
+}
+
+start_balance
