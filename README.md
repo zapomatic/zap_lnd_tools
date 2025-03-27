@@ -128,6 +128,15 @@ Example on an Umbrel Home node:
 sudo docker run --rm --network=umbrel_main_network -e GRPC_LOCATION=umbrel.local:10009 -e LND_DIR=/data/.lnd -e CONFIG_LOCATION=/app/chargelnd-coop.config -v /home/umbrel/umbrel/app-data/lightning/data/lnd:/data/.lnd -v /home/umbrel/zap_lnd_tools/apps/charge-lnd:/app zap/charge-lnd:latest --dry-run
 ```
 
+## Fee Discount Strategy
+
+This strategy omits rebalancing from the workflow, and uses fee discounts to encourage traffic from sinks to sources.
+Channel fees are set to a fixed values depending on the channel. The value thresholds are 1984 (e.g. ACINQ, River, BFX), 992 (everyone else).
+
+We then offer a fee discount of 50% the rate of the channel if the channel has low liquidity (<20%).
+
+In this way, LOOP will have free traffic to any source, 
+
 ## Install
 
 > NOTE: this project assumes that you are building your own docker images from source rather than using dockerhub or github published images (as you don't necessarily know what the code is that's on those images and they may become malicious very easily, exploiting your LND directory, which can contain your SEED!) -- we build images using a `zap/` namespace to ensure we are not using docker images that are not built from source.
